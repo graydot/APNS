@@ -10,7 +10,7 @@ module APNS
   @pass = nil
 
   class << self
-    attr_accessor :host, :pem, :port, :pass
+    attr_accessor :host, :pem, :pass, :port, :proxy_host, :proxy_port
   end
 
   def self.send_notification(device_token, message)
@@ -19,16 +19,16 @@ module APNS
   end
 
   def self.send_notifications(notifications)
-    sock, ssl = self.open_connection
+    connection = self.open_connection
 
     packed_nofications = self.packed_nofications(notifications)
 
     notifications.each do |n|
-      ssl.write(packed_nofications)
+      connection.write(packed_nofications)
     end
 
-    ssl.close
-    sock.close
+    connection.close
+    connection = nil
   end
 
   def self.packed_nofications(notifications)
@@ -46,17 +46,16 @@ module APNS
   end
 
   def self.feedback
-    sock, ssl = self.feedback_connection
+    connection = self.feedback_connection
 
     apns_feedback = []
 
-    while message = ssl.read(38)
+    while message = connection.read(38)
       timestamp, token_size, token = message.unpack('N1n1H*')
       apns_feedback << [Time.at(timestamp), token]
     end
 
-    ssl.close
-    sock.close
+    connection.close
 
     return apns_feedback
   end
@@ -64,35 +63,42 @@ module APNS
   protected
 
   def self.open_connection
-    raise "The path to your pem file is not set. (APNS.pem = /path/to/cert.pem)" unless self.pem
-    raise "The path to your pem file does not exist!" unless File.exist?(self.pem)
-
-    context      = OpenSSL::SSL::SSLContext.new
-    context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
-    context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
-
-    sock         = TCPSocket.new(self.host, self.port)
-    ssl          = OpenSSL::SSL::SSLSocket.new(sock,context)
-    ssl.connect
-
-    return sock, ssl
+    args = [@host, @port, @pem, @pass]
+    if @proxy_host && @proxy_port
+      args.unshift(@proxy_host, @proxy_port)
+    end
+    return self.create_connection(args)
   end
 
   def self.feedback_connection
-    raise "The path to your pem file is not set. (APNS.pem = /path/to/cert.pem)" unless self.pem
-    raise "The path to your pem file does not exist!" unless File.exist?(self.pem)
+    args = [feedback_host, feedback_port, @pem, @pass]
+    if proxy?
+      args.unshift(@proxy_host, @proxy_port)
+    end
 
-    context      = OpenSSL::SSL::SSLContext.new
-    context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
-    context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
+    return self.create_connection(args)
+  end
 
-    fhost = self.host.gsub('gateway','feedback')
-    puts fhost
+  def self.feedback_host
+    @host.gsub('gateway','feedback')
+  end
 
-    sock         = TCPSocket.new(fhost, 2196)
-    ssl          = OpenSSL::SSL::SSLSocket.new(sock,context)
-    ssl.connect
+  def self.feedback_port
+    @port + 1
+  end
 
-    return sock, ssl
+  private
+
+  def self.proxy?
+    @proxy_host && @proxy_port
+  end
+
+  def self.create_connection(options)
+    connection = if proxy?
+      ProxyConnection.new(*options)
+    else
+      DirectConnection.new(*options)
+    end
+    connection
   end
 end
