@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require 'spec_helper'
 
 describe APNS::DirectConnection do
   before :each do
@@ -6,20 +6,16 @@ describe APNS::DirectConnection do
     @port = 1111
     @pem = "pem file location"
     @pass = "passphrase"
-    context = double('SSLContext')
+    context = double('SSLContext', :cert= => nil, :key= => nil)
     allow(OpenSSL::SSL::SSLContext).to receive(:new).and_return(context)
-    allow(context).to receive(:cert=)
-    allow(context).to receive(:key=)
     allow(File).to receive(:read).with(@pem).and_return('cert file')
     allow(File).to receive(:exist?).with(@pem).and_return(true)
     allow(OpenSSL::X509::Certificate).to receive(:new).with('cert file').and_return('cert')
     allow(OpenSSL::PKey::RSA).to receive(:new).with('cert file', @pass).and_return('key')
     socket = double('TCPSocket')
     allow(TCPSocket).to receive(:new).with(@host, @port).and_return(socket)
-    @ssl = double('SSL Socket')
+    @ssl = double('SSL Socket', :sync_close= => true, :connect => nil)
     allow(OpenSSL::SSL::SSLSocket).to receive(:new).with(socket, context).and_return(@ssl)
-    allow(@ssl).to receive(:sync_close=).with(true)
-    allow(@ssl).to receive(:connect)
   end
 
   it "raises an exception if pem file name isn't provided" do
@@ -41,35 +37,7 @@ describe APNS::DirectConnection do
     APNS::DirectConnection.new(@host, @port, @pem, @pass)
   end
 
-  describe '#write' do
-    before :each do
-      @connection = APNS::DirectConnection.new(@host, @port, @pem, @pass)
-    end
-    it "writes bytes to ssl socket" do
-      bytes = "some bytes"
-      expect(@ssl).to receive(:write).with(bytes)
-      @connection.write(bytes)
-    end
-  end
+  subject(:connection) { APNS::DirectConnection.new(@host, @port, @pem, @pass) }
 
-  describe '#read' do
-    before :each do
-      @connection = APNS::DirectConnection.new(@host, @port, @pem, @pass)
-    end
-    it "reads bytes from ssl socket" do
-      length = 200
-      expect(@ssl).to receive(:read).with(length)
-      @connection.read(length)
-    end
-  end
-
-  describe '#close' do
-    before :each do
-      @connection = APNS::DirectConnection.new(@host, @port, @pem, @pass)
-    end
-    it "closes the ssl socket" do
-      expect(@ssl).to receive(:close)
-      @connection.close
-    end
-  end
+  it_behaves_like "a connection object"
 end

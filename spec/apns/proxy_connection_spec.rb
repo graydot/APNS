@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require 'spec_helper'
 
 describe APNS::ProxyConnection do
   before :each do
@@ -8,27 +8,21 @@ describe APNS::ProxyConnection do
     @pass = "passphrase"
     @proxy_host = "proxy"
     @proxy_port = 8080
-    context = double('SSLContext')
+    context = double('SSLContext', :cert= => nil, :key= => nil)
     allow(OpenSSL::SSL::SSLContext).to receive(:new).and_return(context)
-    allow(context).to receive(:cert=)
-    allow(context).to receive(:key=)
     allow(File).to receive(:read).with(@pem).and_return('cert file')
     allow(File).to receive(:exist?).with(@pem).and_return(true)
     allow(OpenSSL::X509::Certificate).to receive(:new).with('cert file').and_return('cert')
     allow(OpenSSL::PKey::RSA).to receive(:new).with('cert file', @pass).and_return('key')
     socket = double('TCPSocket')
     allow(TCPSocket).to receive(:new).with(@proxy_host, @proxy_port).and_return(socket)
-    @ssl = double('SSL Socket')
+    @ssl = double('SSL Socket', :sync_close= => true, :connect => nil)
     allow(OpenSSL::SSL::SSLSocket).to receive(:new).with(socket, context).and_return(@ssl)
-    allow(@ssl).to receive(:sync_close=).with(true)
-    allow(@ssl).to receive(:connect)
-    @io = double("Buffered IO")
+    @io = double("Buffered IO", :writeline => nil)
     allow(Net::BufferedIO).to receive(:new).and_return(@io)
     allow(@io).to receive(:read_timeout=).with(APNS::ProxyConnection::PROXY_READ_TIMEOUT)
-    allow(@io).to receive(:writeline)
-    response = double("Response")
+    response = double("Response", :value => nil)
     allow(Net::HTTPResponse).to receive(:read_new).with(@io).and_return(response)
-    allow(response).to receive(:value)
   end
 
   it "raises an exception if pem file name isn't provided" do
@@ -50,37 +44,9 @@ describe APNS::ProxyConnection do
     APNS::ProxyConnection.new(@proxy_host, @proxy_port, @host, @port, @pem, @pass)
   end
 
-  describe '#write' do
-    before :each do
-      @connection = APNS::ProxyConnection.new(@proxy_host, @proxy_port, @host, @port, @pem, @pass)
-    end
-    it "writes bytes to ssl socket" do
-      bytes = "some bytes"
-      expect(@ssl).to receive(:write).with(bytes)
-      @connection.write(bytes)
-    end
-  end
+  subject(:connection) { APNS::ProxyConnection.new(@proxy_host, @proxy_port, @host, @port, @pem, @pass) }
 
-  describe '#read' do
-    before :each do
-      @connection = APNS::ProxyConnection.new(@proxy_host, @proxy_port, @host, @port, @pem, @pass)
-    end
-    it "reads bytes from ssl socket" do
-      length = 200
-      expect(@ssl).to receive(:read).with(length)
-      @connection.read(length)
-    end
-  end
-
-  describe '#close' do
-    before :each do
-      @connection = APNS::ProxyConnection.new(@proxy_host, @proxy_port, @host, @port, @pem, @pass)
-    end
-    it "closes the ssl socket" do
-      expect(@ssl).to receive(:close)
-      @connection.close
-    end
-  end
+  it_behaves_like "a connection object"
 
   describe '#proxy_connect' do
     it "sends connect to gateway over proxy to the proxy server" do

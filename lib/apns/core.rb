@@ -28,7 +28,6 @@ module APNS
     end
 
     connection.close
-    connection = nil
   end
 
   def self.packed_nofications(notifications)
@@ -64,10 +63,10 @@ module APNS
 
   def self.open_connection
     args = [@host, @port, @pem, @pass]
-    if @proxy_host && @proxy_port
+    if proxy?
       args.unshift(@proxy_host, @proxy_port)
     end
-    return self.create_connection(args)
+    return create_connection(args)
   end
 
   def self.feedback_connection
@@ -76,7 +75,7 @@ module APNS
       args.unshift(@proxy_host, @proxy_port)
     end
 
-    return self.create_connection(args)
+    return create_connection(args)
   end
 
   def self.feedback_host
@@ -87,18 +86,18 @@ module APNS
     @port + 1
   end
 
-  private
-
   def self.proxy?
     @proxy_host && @proxy_port
   end
 
-  def self.create_connection(options)
+  def self.create_connection(args)
     connection = if proxy?
-      ProxyConnection.new(*options)
+      ProxyConnection.new(*args)
     else
-      DirectConnection.new(*options)
+      DirectConnection.new(*args)
     end
     connection
   end
+
+  private_class_method :proxy?, :create_connection
 end

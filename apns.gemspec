@@ -21,6 +21,6 @@ DESC
   s.rubygems_version = %q{1.3.5}
   s.summary = %q{Simple Apple push notification service gem}
 
-  s.add_development_dependency 'rspec', '2.14.0'
+  s.add_development_dependency 'rspec', '>= 2.14.0'
 
 end

@@ -1,5 +1,7 @@
 module APNS
   class ProxyConnection
+    include APNS::ConnectionMethods
+    
     PROXY_READ_TIMEOUT = 60
     def initialize(proxy_host, proxy_port, host, port, pem, pass)
       raise "The path to your pem file is not set. (APNS.pem = /path/to/cert.pem)" unless pem
@@ -15,18 +17,6 @@ module APNS
 
       proxy_connect(host, port)
       @ssl.connect
-    end
-
-    def write(bytes)
-      @ssl.write(bytes)
-    end
-
-    def read(length)
-      @ssl.read(length)
-    end
-
-    def close
-      @ssl.close
     end
 
     private
