@@ -1,3 +1,7 @@
+require 'openssl'
+require 'socket'
+require 'apns/connection_methods'
+
 module APNS
   class DirectConnection
     include APNS::ConnectionMethods
@@ -9,7 +13,7 @@ module APNS
       context.cert = OpenSSL::X509::Certificate.new(File.read(pem))
       context.key  = OpenSSL::PKey::RSA.new(File.read(pem), pass)
 
-      socket      = TCPSocket.new(host, port)      
+      socket       = TCPSocket.new(host, port)      
       @ssl         = OpenSSL::SSL::SSLSocket.new(socket, context)
       @ssl.sync_close = true
       @ssl.connect

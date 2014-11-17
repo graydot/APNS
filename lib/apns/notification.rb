@@ -1,6 +1,7 @@
-module APNS
-  require 'openssl'
+require 'json'
+require 'openssl'
 
+module APNS
   class Notification
     attr_accessor :device_token, :alert, :badge, :sound, :category, :other, :priority
     attr_accessor :message_identifier, :expiration_date

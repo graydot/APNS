@@ -22,23 +22,51 @@ describe APNS::Notification do
   describe '#packaged_message' do
     
     it "should return JSON with notification information" do
-      n = APNS::Notification.new('device_token', {:alert => 'Hello iPhone', :badge => 3, :sound => 'awesome.caf'})
-      n.packaged_message.should  == "{\"aps\":{\"alert\":\"Hello iPhone\",\"badge\":3,\"sound\":\"awesome.caf\"}}"
+      n = APNS::Notification.new('device_token', {
+        :alert => 'Hello iPhone', 
+        :badge => 3, 
+        :sound => 'awesome.caf'
+      })
+      expect(JSON.parse(n.packaged_message)).to eql({
+        "aps" => {
+          "alert" => "Hello iPhone",
+          "badge" => 3,
+          "sound" => "awesome.caf"
+        }
+      })
     end
 
     it "should support the iOS 8 category key" do
-      n = APNS::Notification.new('device_token', {:alert => 'Hello iPhone', :badge => 3, :category => 'CATEGORY_IDENTIFIER'})
-      n.packaged_message.should  == "{\"aps\":{\"alert\":\"Hello iPhone\",\"badge\":3,\"category\":\"CATEGORY_IDENTIFIER\"}}"
+      n = APNS::Notification.new('device_token', {
+        :alert => 'Hello iPhone', 
+        :badge => 3, 
+        :category => 'CATEGORY_IDENTIFIER'
+      })
+      expect(JSON.parse(n.packaged_message)).to eql({
+        "aps" => {
+          "alert" => "Hello iPhone",
+          "badge" => 3, 
+          "category" => 'CATEGORY_IDENTIFIER'
+        }
+      })
     end
 
     it "should not include keys that are empty in the JSON" do
       n = APNS::Notification.new('device_token', {:badge => 3})
-      n.packaged_message.should == "{\"aps\":{\"badge\":3}}"
+      expect(JSON.parse(n.packaged_message)).to eql({
+        "aps" => {
+          "badge" => 3
+        }
+      })
     end
 
     it "should return JSON with content availible" do
       n = APNS::Notification.new('device_token', {:content_available => true})
-      n.packaged_message.should  == "{\"aps\":{\"content-available\":1}}"
+      expect(JSON.parse(n.packaged_message)).to eql({
+        "aps" => {
+          "content-available" => 1
+        }
+      })
     end
     
   end
@@ -52,9 +80,14 @@ describe APNS::Notification do
 
   describe '#packaged_notification' do
     it "should package the token" do
-      n = APNS::Notification.new('device_token', {:alert => 'Hello iPhone', :badge => 3, :sound => 'awesome.caf'})
-      n.stub!(:message_identifier).and_return('aaaa') # make sure the message_identifier is not random
-      Base64.encode64(n.packaged_notification).should == "AQAG3vLO/YTnAgBAeyJhcHMiOnsiYWxlcnQiOiJIZWxsbyBpUGhvbmUiLCJi\nYWRnZSI6Mywic291bmQiOiJhd2Vzb21lLmNhZiJ9fQMABGFhYWEEAAQAAAAA\nBQABCg==\n"
+      n = APNS::Notification.new('device_token', {
+        :alert => 'Hello iPhone', 
+        :badge => 3, 
+        :message_identifier => 'random',
+        :sound => 'awesome.caf'
+      })
+      allow(n).to receive(:packaged_message).and_return('{"packaged": "message"}') #actual message json has ordering depending on ruby version
+      expect(Base64.encode64(n.packaged_notification)).to eql("AQAG3vLO/YTnAgAXeyJwYWNrYWdlZCI6ICJtZXNzYWdlIn0DAAZyYW5kb20E\nAAQAAAAABQABCg==\n")
     end
   end
   

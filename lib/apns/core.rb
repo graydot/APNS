@@ -1,8 +1,9 @@
-module APNS
-  require 'socket'
-  require 'openssl'
-  require 'json'
+require 'apns/direct_connection'
+require 'apns/notification'
+require 'apns/proxy_connection'
 
+
+module APNS
   @host = 'gateway.sandbox.push.apple.com'
   @port = 2195
   # openssl pkcs12 -in mycert.p12 -out client-cert.pem -nodes -clcerts

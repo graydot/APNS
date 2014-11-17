@@ -1,3 +1,8 @@
+require 'net/http'
+require 'openssl'
+require 'socket'
+require 'apns/connection_methods'
+
 module APNS
   class ProxyConnection
     include APNS::ConnectionMethods
